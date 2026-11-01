@@ -1,0 +1,56 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local remote = Instance.new("RemoteEvent")
+remote.Name = "HUYNHUT_EggAction"
+remote.Parent = ReplicatedStorage
+
+local eggsFolder = workspace:WaitForChild("Eggs")
+
+local cooldown = {}
+
+remote.OnServerEvent:Connect(function(player, action, eggName)
+    if action ~= "Collect" then return end
+    if typeof(eggName) ~= "string" then return end
+
+    local now = os.clock()
+    if cooldown[player] and now - cooldown[player] < 0.5 then
+        return
+    end
+    cooldown[player] = now
+
+    local egg = eggsFolder:FindFirstChild(eggName)
+    if not egg then return end
+
+    if egg:GetAttribute("OwnerUserId") ~= player.UserId then
+        return
+    end
+
+    local character = player.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    local part = egg:IsA("BasePart") and egg
+        or egg:FindFirstChildWhichIsA("BasePart", true)
+
+    if not root or not part then return end
+    if (root.Position - part.Position).Magnitude > 18 then
+        return
+    end
+
+    local inventory = player:FindFirstChild("EggInventory")
+    if not inventory then
+        inventory = Instance.new("Folder")
+        inventory.Name = "EggInventory"
+        inventory.Parent = player
+    end
+
+    local item = Instance.new("StringValue")
+    item.Name = eggName
+    item.Value = egg:GetAttribute("PetName") or "Unknown"
+    item.Parent = inventory
+
+    egg:Destroy()
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    cooldown[player] = nil
+end)
